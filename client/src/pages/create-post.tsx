@@ -35,7 +35,7 @@ export default function CreatePost() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<{ id: number; name: string; slug: string }[]>({
     queryKey: ["/api/categories"],
   });
   
@@ -168,7 +168,7 @@ export default function CreatePost() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categories.map((category) => (
+                          {categories.map((category: { id: number; name: string; slug: string }) => (
                             <SelectItem key={category.id} value={category.name}>
                               {category.name}
                             </SelectItem>

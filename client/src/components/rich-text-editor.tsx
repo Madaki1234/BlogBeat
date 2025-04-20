@@ -1,10 +1,10 @@
 import { useEditor, EditorContent, BubbleMenu, FloatingMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
-import Link from '@tiptap/extension-link';
-import Placeholder from '@tiptap/extension-placeholder';
-import Underline from '@tiptap/extension-underline';
-import TextAlign from '@tiptap/extension-text-align';
+import ImageExtension from '@tiptap/extension-image';
+import LinkExtension from '@tiptap/extension-link';
+import PlaceholderExtension from '@tiptap/extension-placeholder';
+import UnderlineExtension from '@tiptap/extension-underline';
+import TextAlignExtension from '@tiptap/extension-text-align';
 import { useState, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -47,23 +47,23 @@ export function RichTextEditor({ content, onChange, placeholder = 'Write somethi
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Underline,
-      Link.configure({
+      UnderlineExtension,
+      LinkExtension.configure({
         openOnClick: false,
         linkOnPaste: true,
         HTMLAttributes: {
           class: 'text-primary underline',
         },
       }),
-      Image.configure({
+      ImageExtension.configure({
         HTMLAttributes: {
           class: 'rounded-lg border border-gray-200',
         },
       }),
-      Placeholder.configure({
+      PlaceholderExtension.configure({
         placeholder,
       }),
-      TextAlign.configure({
+      TextAlignExtension.configure({
         types: ['heading', 'paragraph'],
       }),
     ],

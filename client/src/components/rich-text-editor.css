@@ -1,6 +1,7 @@
 /* Rich Text Editor Custom Styles */
 
-.ProseMirror {
+.ProseMirror,
+.rich-text-content {
   outline: none;
 }
 
@@ -12,14 +13,16 @@
   height: 0;
 }
 
-.ProseMirror img {
+.ProseMirror img,
+.rich-text-content img {
   max-width: 100%;
   height: auto;
   display: block;
   margin: 1rem 0;
 }
 
-.ProseMirror blockquote {
+.ProseMirror blockquote,
+.rich-text-content blockquote {
   border-left: 3px solid #e2e8f0;
   padding-left: 1rem;
   font-style: italic;
@@ -27,28 +30,32 @@
   margin: 1.5rem 0;
 }
 
-.ProseMirror h1 {
+.ProseMirror h1,
+.rich-text-content h1 {
   font-size: 2rem;
   font-weight: 700;
   margin: 1.5rem 0 1rem;
   line-height: 1.2;
 }
 
-.ProseMirror h2 {
+.ProseMirror h2,
+.rich-text-content h2 {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 1.5rem 0 1rem;
   line-height: 1.25;
 }
 
-.ProseMirror h3 {
+.ProseMirror h3,
+.rich-text-content h3 {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 1.5rem 0 1rem;
   line-height: 1.25;
 }
 
-.ProseMirror pre {
+.ProseMirror pre,
+.rich-text-content pre {
   background-color: #f1f5f9;
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
@@ -57,38 +64,45 @@
   overflow-x: auto;
 }
 
-.ProseMirror ul {
+.ProseMirror ul,
+.rich-text-content ul {
   list-style-type: disc;
   padding-left: 1.5rem;
   margin: 1rem 0;
 }
 
-.ProseMirror ol {
+.ProseMirror ol,
+.rich-text-content ol {
   list-style-type: decimal;
   padding-left: 1.5rem;
   margin: 1rem 0;
 }
 
-.ProseMirror p {
+.ProseMirror p,
+.rich-text-content p {
   margin: 0.5rem 0;
   line-height: 1.6;
 }
 
 /* Text alignment styles */
-.ProseMirror .text-left {
+.ProseMirror .text-left,
+.rich-text-content .text-left {
   text-align: left;
 }
 
-.ProseMirror .text-center {
+.ProseMirror .text-center,
+.rich-text-content .text-center {
   text-align: center;
 }
 
-.ProseMirror .text-right {
+.ProseMirror .text-right,
+.rich-text-content .text-right {
   text-align: right;
 }
 
 /* Medium-style image captions */
-.ProseMirror figcaption {
+.ProseMirror figcaption,
+.rich-text-content figcaption {
   text-align: center;
   font-size: 0.875rem;
   color: #64748b;
