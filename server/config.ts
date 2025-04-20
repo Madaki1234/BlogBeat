@@ -11,6 +11,23 @@ const isProduction = environment === 'production';
 const dbConfig = {
   uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/blog',
   useInMemory: !isProduction,
+  options: {
+    // Common options
+    autoIndex: !isProduction, // Don't build indexes in production
+    maxPoolSize: isProduction ? 50 : 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    family: 4, // Use IPv4, skip trying IPv6
+    
+    // Production specific options
+    ...(isProduction && {
+      connectTimeoutMS: 30000,
+      keepAlive: true,
+      keepAliveInitialDelay: 300000,
+      retryWrites: true,
+      w: 'majority',
+    }),
+  },
 };
 
 // Server configuration

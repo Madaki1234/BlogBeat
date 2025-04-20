@@ -9,8 +9,15 @@ import { storage, User as StorageUser } from "./storage";
 // Define the User type for Express session
 declare global {
   namespace Express {
-    // Extend the User interface to match our storage User type
-    interface User extends StorageUser {}
+    // Define the User interface for the session
+    interface User {
+      id: string;
+      username: string;
+      password: string;
+      name: string;
+      bio?: string;
+      createdAt: Date;
+    }
   }
 }
 

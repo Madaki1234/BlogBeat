@@ -23,7 +23,7 @@ export const connectToDatabase = async (): Promise<void> => {
       }
       
       log(`Connecting to MongoDB production database...`, 'express');
-      await mongoose.connect(dbConfig.uri);
+      await mongoose.connect(dbConfig.uri, dbConfig.options);
       log(`Connected to MongoDB production database`, 'express');
     }
     
