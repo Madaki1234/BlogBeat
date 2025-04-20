@@ -29,7 +29,12 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    console.warn('Warning: SESSION_SECRET is not set in production. Using a default value is insecure.');
+  }
+  
   const sessionSecret = process.env.SESSION_SECRET || "dev-blog-secret-key";
+  const isProduction = process.env.NODE_ENV === 'production';
   
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
@@ -38,8 +43,9 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       httpOnly: true,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      secure: isProduction, // Use secure cookies in production
+      sameSite: isProduction ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     }
   };
 
