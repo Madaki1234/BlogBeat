@@ -25,7 +25,8 @@ const dbConfig = {
       keepAlive: true,
       keepAliveInitialDelay: 300000,
       retryWrites: true,
-      w: 'majority',
+      // Use any as a workaround for TypeScript constraints
+      w: 'majority' as any,
     }),
   },
 };

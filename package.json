@@ -52,6 +52,8 @@
     "@tiptap/pm": "^2.11.7",
     "@tiptap/react": "^2.11.7",
     "@tiptap/starter-kit": "^2.11.7",
+    "@types/compression": "^1.7.5",
+    "@types/cors": "^2.8.17",
     "@types/react-helmet": "^6.1.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
