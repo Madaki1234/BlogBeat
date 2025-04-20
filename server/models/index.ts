@@ -1,13 +1,13 @@
-import User from './User';
-import Post from './Post';
-import Comment from './Comment';
-import Like from './Like';
-import Category from './Category';
+import UserModel from './User';
+import PostModel from './Post';
+import CommentModel from './Comment';
+import LikeModel from './Like';
+import CategoryModel from './Category';
 
 export {
-  User,
-  Post,
-  Comment,
-  Like,
-  Category
+  UserModel,
+  PostModel,
+  CommentModel,
+  LikeModel,
+  CategoryModel
 };

@@ -34,7 +34,8 @@ const PostSchema: Schema = new Schema({
   },
   excerpt: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   authorId: {
     type: Schema.Types.ObjectId,
@@ -70,10 +71,7 @@ const PostSchema: Schema = new Schema({
   }
 });
 
-// Update the updatedAt timestamp before saving
-PostSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
+// Add text index for search functionality
+PostSchema.index({ title: 'text', content: 'text', excerpt: 'text' });
 
 export default mongoose.model<IPost>('Post', PostSchema);

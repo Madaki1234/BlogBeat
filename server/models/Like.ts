@@ -25,7 +25,7 @@ const LikeSchema: Schema = new Schema({
   }
 });
 
-// Create compound index to ensure a user can only like a post once
+// Create compound unique index to prevent duplicate likes
 LikeSchema.index({ postId: 1, userId: 1 }, { unique: true });
 
 export default mongoose.model<ILike>('Like', LikeSchema);
