@@ -11,6 +11,10 @@ dist
 build
 server/public
 
+#replit 
+.replit
+
+
 # Development
 .DS_Store
 vite.config.ts.*
