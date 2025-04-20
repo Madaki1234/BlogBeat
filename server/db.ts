@@ -7,6 +7,36 @@ let mongoServer: MongoMemoryServer;
 
 export const connectToDatabase = async (): Promise<void> => {
   try {
+    // Set up connection event handlers before connecting
+    mongoose.connection.on('connected', () => {
+      log('Connected to MongoDB', 'express');
+    });
+    
+    mongoose.connection.on('disconnected', () => {
+      log('Disconnected from MongoDB', 'express');
+      
+      // In production, attempt to reconnect
+      if (isProduction && !mongoose.connection.readyState) {
+        log('Attempting to reconnect to MongoDB...', 'express');
+        setTimeout(connectToDatabase, 5000); // Try reconnecting after 5 seconds
+      }
+    });
+    
+    mongoose.connection.on('error', (err) => {
+      log(`MongoDB connection error: ${err}`, 'express');
+      
+      // In production, attempt to reconnect on error
+      if (isProduction) {
+        log('Attempting to reconnect to MongoDB after error...', 'express');
+        setTimeout(connectToDatabase, 5000); // Try reconnecting after 5 seconds
+      }
+    });
+    
+    // Configure mongoose settings for production
+    if (isProduction) {
+      mongoose.set('debug', false);
+    }
+    
     // Use in-memory MongoDB for development/testing
     if (dbConfig.useInMemory) {
       mongoServer = await MongoMemoryServer.create();
@@ -28,26 +58,6 @@ export const connectToDatabase = async (): Promise<void> => {
     }
     
     log('✅ MongoDB connected', 'express');
-    
-    // Log when connected
-    mongoose.connection.on('connected', () => {
-      log('Connected to MongoDB', 'express');
-    });
-    
-    // Log when disconnected
-    mongoose.connection.on('disconnected', () => {
-      log('Disconnected from MongoDB', 'express');
-    });
-    
-    // Log errors
-    mongoose.connection.on('error', (err) => {
-      log(`MongoDB connection error: ${err}`, 'express');
-    });
-    
-    // Configure mongoose settings for production
-    if (isProduction) {
-      mongoose.set('debug', false);
-    }
     
   } catch (error) {
     log(`Error connecting to MongoDB: ${error}`, 'express');
