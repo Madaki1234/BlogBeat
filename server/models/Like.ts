@@ -2,15 +2,13 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { IUser } from './User';
 import { IPost } from './Post';
 
-// Like interface
 export interface ILike extends Document {
   postId: mongoose.Types.ObjectId | IPost;
   userId: mongoose.Types.ObjectId | IUser;
   createdAt: Date;
 }
 
-// Like schema
-const LikeSchema = new Schema<ILike>({
+const LikeSchema: Schema = new Schema({
   postId: {
     type: Schema.Types.ObjectId,
     ref: 'Post',
@@ -27,8 +25,7 @@ const LikeSchema = new Schema<ILike>({
   }
 });
 
-// Create a compound index to ensure a user can only like a post once
+// Create compound index to ensure a user can only like a post once
 LikeSchema.index({ postId: 1, userId: 1 }, { unique: true });
 
-// Export Like model
 export default mongoose.model<ILike>('Like', LikeSchema);
