@@ -11,8 +11,11 @@ dist
 build
 server/public
 
-#replit 
+#repl-history 
 .replit
+.replit-ai-history
+.replit-prompt-history
+
 
 
 # Development

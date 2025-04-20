@@ -18,12 +18,10 @@ const dbConfig = {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
     family: 4, // Use IPv4, skip trying IPv6
-    
+
     // Production specific options
     ...(isProduction && {
       connectTimeoutMS: 30000,
-      keepAlive: true,
-      keepAliveInitialDelay: 300000,
       retryWrites: true,
       // Use any as a workaround for TypeScript constraints
       w: 'majority' as any,
