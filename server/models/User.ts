@@ -1,6 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-// User interface
 export interface IUser extends Document {
   username: string;
   password: string;
@@ -9,14 +8,12 @@ export interface IUser extends Document {
   createdAt: Date;
 }
 
-// User schema
-const UserSchema = new Schema<IUser>({
+const UserSchema: Schema = new Schema({
   username: {
     type: String,
     required: true,
     unique: true,
-    trim: true,
-    lowercase: true
+    trim: true
   },
   password: {
     type: String,
@@ -37,14 +34,4 @@ const UserSchema = new Schema<IUser>({
   }
 });
 
-// Don't return the password in queries by default
-UserSchema.set('toJSON', {
-  transform: (_, ret) => {
-    const result = { ...ret };
-    delete result.password;
-    return result;
-  }
-});
-
-// Export User model
 export default mongoose.model<IUser>('User', UserSchema);

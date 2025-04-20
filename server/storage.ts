@@ -1,475 +1,650 @@
-import { users, posts, comments, likes, categories } from "@shared/schema";
-import type { 
-  User, InsertUser, Post, InsertPost, Comment, InsertComment, 
-  Like, InsertLike, Category, InsertCategory, 
-  PostWithAuthor, CommentWithAuthor 
-} from "@shared/schema";
-import session from "express-session";
+import { 
+  User as UserModel, 
+  Post as PostModel, 
+  Comment as CommentModel, 
+  Like as LikeModel,
+  Category as CategoryModel
+} from './models';
+import session from 'express-session';
 import createMemoryStore from "memorystore";
+import { Types } from 'mongoose';
+
+// Define data types
+export interface User {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+  bio?: string;
+  createdAt: Date;
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  authorId: string;
+  category: string;
+  coverImage?: string;
+  published: boolean;
+  likeCount: number;
+  commentCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Comment {
+  id: string;
+  content: string;
+  postId: string;
+  authorId: string;
+  parentId?: string;
+  createdAt: Date;
+}
+
+export interface Like {
+  id: string;
+  postId: string;
+  userId: string;
+  createdAt: Date;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: Date;
+}
+
+export interface PostWithAuthor extends Post {
+  author: Omit<User, 'password'>;
+  liked?: boolean;
+}
+
+export interface CommentWithAuthor extends Comment {
+  author: Omit<User, 'password'>;
+  replies?: CommentWithAuthor[];
+}
+
+export type InsertUser = Omit<User, 'id' | 'createdAt'>;
+export type InsertPost = Omit<Post, 'id' | 'createdAt' | 'updatedAt' | 'likeCount' | 'commentCount'>;
+export type InsertComment = Omit<Comment, 'id' | 'createdAt'>;
+export type InsertLike = Omit<Like, 'id' | 'createdAt'>;
+export type InsertCategory = Omit<Category, 'id' | 'createdAt'>;
 
 const MemoryStore = createMemoryStore(session);
 
-// Interface for storage operations
 export interface IStorage {
   // User operations
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
   // Post operations
-  createPost(post: InsertPost & { authorId: number }): Promise<Post>;
-  getPostById(id: number): Promise<Post | undefined>;
+  createPost(post: InsertPost & { authorId: string }): Promise<Post>;
+  getPostById(id: string): Promise<Post | undefined>;
   getPostBySlug(slug: string): Promise<PostWithAuthor | undefined>;
   getPosts(page?: number, limit?: number, category?: string): Promise<{ posts: PostWithAuthor[], total: number }>;
   getFeaturedPosts(): Promise<PostWithAuthor[]>;
-  getPostsByAuthor(authorId: number): Promise<PostWithAuthor[]>;
-  updatePost(id: number, data: Partial<InsertPost>): Promise<Post | undefined>;
-  deletePost(id: number): Promise<boolean>;
+  getPostsByAuthor(authorId: string): Promise<PostWithAuthor[]>;
+  updatePost(id: string, data: Partial<InsertPost>): Promise<Post | undefined>;
+  deletePost(id: string): Promise<boolean>;
   
   // Comment operations
-  createComment(comment: InsertComment & { authorId: number }): Promise<Comment>;
-  getCommentsByPostId(postId: number): Promise<CommentWithAuthor[]>;
-  deleteComment(id: number): Promise<boolean>;
+  createComment(comment: InsertComment & { authorId: string }): Promise<Comment>;
+  getCommentsByPostId(postId: string): Promise<CommentWithAuthor[]>;
+  deleteComment(id: string): Promise<boolean>;
   
   // Like operations
-  likePost(postId: number, userId: number): Promise<Like | undefined>;
-  unlikePost(postId: number, userId: number): Promise<boolean>;
-  checkLiked(postId: number, userId: number): Promise<boolean>;
+  likePost(postId: string, userId: string): Promise<Like | undefined>;
+  unlikePost(postId: string, userId: string): Promise<boolean>;
+  checkLiked(postId: string, userId: string): Promise<boolean>;
   
   // Category operations
   getCategories(): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Use any type for session store
 }
 
-export class MemStorage implements IStorage {
-  private usersStore: Map<number, User>;
-  private postsStore: Map<number, Post>;
-  private commentsStore: Map<number, Comment>;
-  private likesStore: Map<number, Like>;
-  private categoriesStore: Map<number, Category>;
-  private slugToPostId: Map<string, number>;
-  sessionStore: session.SessionStore;
-  
-  private userIdCounter: number;
-  private postIdCounter: number;
-  private commentIdCounter: number;
-  private likeIdCounter: number;
-  private categoryIdCounter: number;
+export class MongoStorage implements IStorage {
+  sessionStore: any;
 
   constructor() {
-    this.usersStore = new Map();
-    this.postsStore = new Map();
-    this.commentsStore = new Map();
-    this.likesStore = new Map();
-    this.categoriesStore = new Map();
-    this.slugToPostId = new Map();
-    
-    this.userIdCounter = 1;
-    this.postIdCounter = 1;
-    this.commentIdCounter = 1;
-    this.likeIdCounter = 1;
-    this.categoryIdCounter = 1;
-    
     this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // 24 hours
+      checkPeriod: 86400000 // prune expired entries every 24h
     });
     
-    // Seed categories
+    // Seed categories on startup if none exist
     this.seedCategories();
   }
-  
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    return this.usersStore.get(id);
+
+  // Helper to convert from Mongoose document to plain object
+  private static documentToUser(doc: any): User | undefined {
+    if (!doc) return undefined;
+    return {
+      id: doc._id.toString(),
+      username: doc.username,
+      password: doc.password,
+      name: doc.name,
+      bio: doc.bio,
+      createdAt: doc.createdAt
+    };
+  }
+
+  private static documentToPost(doc: any): Post | undefined {
+    if (!doc) return undefined;
+    return {
+      id: doc._id.toString(),
+      title: doc.title,
+      slug: doc.slug,
+      content: doc.content,
+      excerpt: doc.excerpt,
+      authorId: doc.authorId.toString(),
+      category: doc.category,
+      coverImage: doc.coverImage,
+      published: doc.published,
+      likeCount: doc.likeCount,
+      commentCount: doc.commentCount,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt
+    };
+  }
+
+  private static documentToComment(doc: any): Comment | undefined {
+    if (!doc) return undefined;
+    return {
+      id: doc._id.toString(),
+      content: doc.content,
+      postId: doc.postId.toString(),
+      authorId: doc.authorId.toString(),
+      parentId: doc.parentId ? doc.parentId.toString() : undefined,
+      createdAt: doc.createdAt
+    };
+  }
+
+  private static documentToLike(doc: any): Like | undefined {
+    if (!doc) return undefined;
+    return {
+      id: doc._id.toString(),
+      postId: doc.postId.toString(),
+      userId: doc.userId.toString(),
+      createdAt: doc.createdAt
+    };
+  }
+
+  private static documentToCategory(doc: any): Category | undefined {
+    if (!doc) return undefined;
+    return {
+      id: doc._id.toString(),
+      name: doc.name,
+      slug: doc.slug,
+      createdAt: doc.createdAt
+    };
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    try {
+      const doc = await UserModel.findById(id);
+      return doc ? MongoStorage.documentToUser(doc) : undefined;
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      return undefined;
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.usersStore.values()).find(
-      (user) => user.username === username,
-    );
+    try {
+      const doc = await UserModel.findOne({ username });
+      return doc ? MongoStorage.documentToUser(doc) : undefined;
+    } catch (error) {
+      console.error('Error fetching user by username:', error);
+      return undefined;
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { 
-      ...insertUser, 
-      id,
-      createdAt: new Date(),
-    };
-    this.usersStore.set(id, user);
-    return user;
-  }
-  
-  // Post operations
-  async createPost(post: InsertPost & { authorId: number }): Promise<Post> {
-    const id = this.postIdCounter++;
-    const newPost: Post = {
-      ...post,
-      id,
-      createdAt: new Date(),
-    };
-    
-    this.postsStore.set(id, newPost);
-    this.slugToPostId.set(post.slug, id);
-    
-    // Update category post count
-    if (post.category) {
-      const category = Array.from(this.categoriesStore.values()).find(
-        (cat) => cat.name.toLowerCase() === post.category.toLowerCase()
-      );
-      
-      if (category) {
-        const updatedCategory = { ...category, postCount: category.postCount + 1 };
-        this.categoriesStore.set(category.id, updatedCategory);
+    try {
+      const newUser = new UserModel(insertUser);
+      const doc = await newUser.save();
+      const user = MongoStorage.documentToUser(doc);
+      if (!user) {
+        throw new Error('Failed to create user');
       }
+      return user;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
     }
-    
-    return newPost;
   }
 
-  async getPostById(id: number): Promise<Post | undefined> {
-    return this.postsStore.get(id);
+  async createPost(post: InsertPost & { authorId: string }): Promise<Post> {
+    try {
+      const newPost = new PostModel({
+        ...post,
+        authorId: new Types.ObjectId(post.authorId),
+        likeCount: 0,
+        commentCount: 0
+      });
+      const doc = await newPost.save();
+      const convertedPost = MongoStorage.documentToPost(doc);
+      if (!convertedPost) {
+        throw new Error('Failed to create post');
+      }
+      return convertedPost;
+    } catch (error) {
+      console.error('Error creating post:', error);
+      throw error;
+    }
+  }
+
+  async getPostById(id: string): Promise<Post | undefined> {
+    try {
+      const doc = await PostModel.findById(id);
+      return doc ? MongoStorage.documentToPost(doc) : undefined;
+    } catch (error) {
+      console.error('Error fetching post:', error);
+      return undefined;
+    }
   }
 
   async getPostBySlug(slug: string): Promise<PostWithAuthor | undefined> {
-    const postId = this.slugToPostId.get(slug);
-    if (!postId) return undefined;
-    
-    const post = this.postsStore.get(postId);
-    if (!post) return undefined;
-    
-    const author = this.usersStore.get(post.authorId);
-    if (!author) return undefined;
-    
-    const { password, ...authorWithoutPassword } = author;
-    
-    const likeCount = Array.from(this.likesStore.values()).filter(
-      (like) => like.postId === post.id
-    ).length;
-    
-    const commentCount = Array.from(this.commentsStore.values()).filter(
-      (comment) => comment.postId === post.id
-    ).length;
-    
-    return {
-      ...post,
-      author: authorWithoutPassword,
-      likeCount,
-      commentCount,
-    };
-  }
-
-  async getPosts(page = 1, limit = 10, category?: string): Promise<{ posts: PostWithAuthor[], total: number }> {
-    let filteredPosts = Array.from(this.postsStore.values())
-      .filter(post => post.published);
-    
-    if (category) {
-      filteredPosts = filteredPosts.filter(post => 
-        post.category.toLowerCase() === category.toLowerCase()
-      );
-    }
-    
-    // Sort by date (newest first)
-    filteredPosts.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    
-    const total = filteredPosts.length;
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    const paginatedPosts = filteredPosts.slice(start, end);
-    
-    const postsWithAuthors: PostWithAuthor[] = await Promise.all(
-      paginatedPosts.map(async (post) => {
-        const author = this.usersStore.get(post.authorId);
-        if (!author) throw new Error(`Author not found for post ${post.id}`);
-        
-        const { password, ...authorWithoutPassword } = author;
-        
-        const likeCount = Array.from(this.likesStore.values()).filter(
-          (like) => like.postId === post.id
-        ).length;
-        
-        const commentCount = Array.from(this.commentsStore.values()).filter(
-          (comment) => comment.postId === post.id
-        ).length;
-        
-        return {
-          ...post,
-          author: authorWithoutPassword,
-          likeCount,
-          commentCount,
-        };
-      })
-    );
-    
-    return { posts: postsWithAuthors, total };
-  }
-
-  async getFeaturedPosts(): Promise<PostWithAuthor[]> {
-    // Get 3 most recent posts (would be different logic in real app)
-    const allPosts = Array.from(this.postsStore.values())
-      .filter(post => post.published)
-      .sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .slice(0, 3);
-    
-    const postsWithAuthors = await Promise.all(
-      allPosts.map(async (post) => {
-        const author = this.usersStore.get(post.authorId);
-        if (!author) throw new Error(`Author not found for post ${post.id}`);
-        
-        const { password, ...authorWithoutPassword } = author;
-        
-        const likeCount = Array.from(this.likesStore.values()).filter(
-          (like) => like.postId === post.id
-        ).length;
-        
-        const commentCount = Array.from(this.commentsStore.values()).filter(
-          (comment) => comment.postId === post.id
-        ).length;
-        
-        return {
-          ...post,
-          author: authorWithoutPassword,
-          likeCount,
-          commentCount,
-        };
-      })
-    );
-    
-    return postsWithAuthors;
-  }
-
-  async getPostsByAuthor(authorId: number): Promise<PostWithAuthor[]> {
-    const filteredPosts = Array.from(this.postsStore.values())
-      .filter(post => post.authorId === authorId && post.published)
-      .sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    
-    const author = this.usersStore.get(authorId);
-    if (!author) throw new Error(`Author not found with id ${authorId}`);
-    
-    const { password, ...authorWithoutPassword } = author;
-    
-    const postsWithAuthors = filteredPosts.map(post => {
-      const likeCount = Array.from(this.likesStore.values()).filter(
-        (like) => like.postId === post.id
-      ).length;
+    try {
+      const doc = await PostModel.findOne({ slug }).populate('authorId');
       
-      const commentCount = Array.from(this.commentsStore.values()).filter(
-        (comment) => comment.postId === post.id
-      ).length;
+      if (!doc) return undefined;
+      
+      const post = MongoStorage.documentToPost(doc);
+      const author = doc.authorId as any;
+      
+      // Remove password from author
+      const { password, ...authorWithoutPassword } = MongoStorage.documentToUser(author);
       
       return {
         ...post,
-        author: authorWithoutPassword,
-        likeCount,
-        commentCount,
+        author: authorWithoutPassword
       };
-    });
-    
-    return postsWithAuthors;
+    } catch (error) {
+      console.error('Error fetching post by slug:', error);
+      return undefined;
+    }
   }
 
-  async updatePost(id: number, data: Partial<InsertPost>): Promise<Post | undefined> {
-    const post = this.postsStore.get(id);
-    if (!post) return undefined;
-    
-    // If slug is being updated, update the mapping
-    if (data.slug && data.slug !== post.slug) {
-      this.slugToPostId.delete(post.slug);
-      this.slugToPostId.set(data.slug, id);
-    }
-    
-    const updatedPost = { ...post, ...data };
-    this.postsStore.set(id, updatedPost);
-    
-    return updatedPost;
-  }
-
-  async deletePost(id: number): Promise<boolean> {
-    const post = this.postsStore.get(id);
-    if (!post) return false;
-    
-    // Remove slug mapping
-    this.slugToPostId.delete(post.slug);
-    
-    // Delete all comments for this post
-    for (const [commentId, comment] of this.commentsStore.entries()) {
-      if (comment.postId === id) {
-        this.commentsStore.delete(commentId);
-      }
-    }
-    
-    // Delete all likes for this post
-    for (const [likeId, like] of this.likesStore.entries()) {
-      if (like.postId === id) {
-        this.likesStore.delete(likeId);
-      }
-    }
-    
-    // Update category post count
-    if (post.category) {
-      const category = Array.from(this.categoriesStore.values()).find(
-        (cat) => cat.name.toLowerCase() === post.category.toLowerCase()
-      );
+  async getPosts(page = 1, limit = 10, category?: string): Promise<{ posts: PostWithAuthor[], total: number }> {
+    try {
+      const query: any = {};
       
-      if (category && category.postCount > 0) {
-        const updatedCategory = { ...category, postCount: category.postCount - 1 };
-        this.categoriesStore.set(category.id, updatedCategory);
+      // Add category filter if provided
+      if (category) {
+        query.category = category;
       }
-    }
-    
-    return this.postsStore.delete(id);
-  }
-  
-  // Comment operations
-  async createComment(comment: InsertComment & { authorId: number }): Promise<Comment> {
-    const id = this.commentIdCounter++;
-    const newComment: Comment = {
-      ...comment,
-      id,
-      createdAt: new Date(),
-    };
-    
-    this.commentsStore.set(id, newComment);
-    return newComment;
-  }
-
-  async getCommentsByPostId(postId: number): Promise<CommentWithAuthor[]> {
-    const comments = Array.from(this.commentsStore.values()).filter(
-      (comment) => comment.postId === postId
-    );
-    
-    // Group comments by parent/child relationship
-    const topLevelComments = comments.filter(comment => !comment.parentId);
-    const commentReplies = comments.filter(comment => comment.parentId);
-    
-    // Create a map of comments with their authors
-    const commentsWithAuthors = await Promise.all(
-      topLevelComments.map(async (comment) => {
-        const author = this.usersStore.get(comment.authorId);
-        if (!author) throw new Error(`Author not found for comment ${comment.id}`);
+      
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+      
+      // Get total count
+      const total = await PostModel.countDocuments(query);
+      
+      // Get posts with authors
+      const docs = await PostModel.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('authorId');
+      
+      // Transform to PostWithAuthor[]
+      const posts: PostWithAuthor[] = docs.map(doc => {
+        const post = MongoStorage.documentToPost(doc);
+        const author = doc.authorId as any;
         
-        const { password, ...authorWithoutPassword } = author;
-        
-        // Find replies for this comment
-        const replies = commentReplies
-          .filter(reply => reply.parentId === comment.id)
-          .map(reply => {
-            const replyAuthor = this.usersStore.get(reply.authorId);
-            if (!replyAuthor) throw new Error(`Author not found for reply ${reply.id}`);
-            
-            const { password: replyPassword, ...replyAuthorWithoutPassword } = replyAuthor;
-            
-            return {
-              ...reply,
-              author: replyAuthorWithoutPassword,
-            };
-          });
+        // Remove password from author
+        const { password, ...authorWithoutPassword } = MongoStorage.documentToUser(author);
         
         return {
-          ...comment,
-          author: authorWithoutPassword,
-          replies: replies.length > 0 ? replies : undefined,
+          ...post,
+          author: authorWithoutPassword
         };
-      })
-    );
-    
-    return commentsWithAuthors;
+      });
+      
+      return { posts, total };
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      return { posts: [], total: 0 };
+    }
   }
 
-  async deleteComment(id: number): Promise<boolean> {
-    // Also delete any replies to this comment
-    for (const [commentId, comment] of this.commentsStore.entries()) {
-      if (comment.parentId === id) {
-        this.commentsStore.delete(commentId);
+  async getFeaturedPosts(): Promise<PostWithAuthor[]> {
+    try {
+      // For simplicity, just return the 3 most recent posts as featured
+      const { posts } = await this.getPosts(1, 3);
+      return posts;
+    } catch (error) {
+      console.error('Error fetching featured posts:', error);
+      return [];
+    }
+  }
+
+  async getPostsByAuthor(authorId: string): Promise<PostWithAuthor[]> {
+    try {
+      const docs = await PostModel.find({ authorId: new Types.ObjectId(authorId) })
+        .sort({ createdAt: -1 })
+        .populate('authorId');
+      
+      // Transform to PostWithAuthor[]
+      return docs.map(doc => {
+        const post = MongoStorage.documentToPost(doc);
+        const author = doc.authorId as any;
+        
+        // Remove password from author
+        const { password, ...authorWithoutPassword } = MongoStorage.documentToUser(author);
+        
+        return {
+          ...post,
+          author: authorWithoutPassword
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching posts by author:', error);
+      return [];
+    }
+  }
+
+  async updatePost(id: string, data: Partial<InsertPost>): Promise<Post | undefined> {
+    try {
+      const doc = await PostModel.findByIdAndUpdate(
+        id,
+        { ...data, updatedAt: new Date() },
+        { new: true }
+      );
+      
+      return doc ? MongoStorage.documentToPost(doc) : undefined;
+    } catch (error) {
+      console.error('Error updating post:', error);
+      return undefined;
+    }
+  }
+
+  async deletePost(id: string): Promise<boolean> {
+    try {
+      // Delete all related comments
+      await CommentModel.deleteMany({ postId: new Types.ObjectId(id) });
+      
+      // Delete all related likes
+      await LikeModel.deleteMany({ postId: new Types.ObjectId(id) });
+      
+      // Delete the post
+      const result = await PostModel.findByIdAndDelete(id);
+      
+      return !!result;
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      return false;
+    }
+  }
+
+  async createComment(comment: InsertComment & { authorId: string }): Promise<Comment> {
+    try {
+      // Create new comment with proper ObjectIds
+      const newComment = new CommentModel({
+        ...comment,
+        postId: new Types.ObjectId(comment.postId),
+        authorId: new Types.ObjectId(comment.authorId),
+        parentId: comment.parentId ? new Types.ObjectId(comment.parentId) : undefined
+      });
+      
+      const doc = await newComment.save();
+      
+      // Update post comment count
+      await PostModel.findByIdAndUpdate(
+        comment.postId,
+        { $inc: { commentCount: 1 } }
+      );
+      
+      const convertedComment = MongoStorage.documentToComment(doc);
+      if (!convertedComment) {
+        throw new Error('Failed to create comment');
+      }
+      return convertedComment;
+    } catch (error) {
+      console.error('Error creating comment:', error);
+      throw error;
+    }
+  }
+
+  async getCommentsByPostId(postId: string): Promise<CommentWithAuthor[]> {
+    try {
+      // Get all comments for the post
+      const docs = await CommentModel.find({ postId: new Types.ObjectId(postId) })
+        .sort({ createdAt: 1 })
+        .populate('authorId');
+      
+      // Transform to CommentWithAuthor objects
+      const commentsWithAuthor: CommentWithAuthor[] = [];
+      
+      for (const doc of docs) {
+        const comment = MongoStorage.documentToComment(doc);
+        if (!comment) continue;
+        
+        const author = doc.authorId as any;
+        const userObj = MongoStorage.documentToUser(author);
+        
+        if (!userObj) continue;
+        
+        // Remove password from author
+        const { password, ...authorWithoutPassword } = userObj;
+        
+        commentsWithAuthor.push({
+          ...comment,
+          author: authorWithoutPassword,
+          replies: []
+        });
+      }
+      
+      // Build comment tree
+      const commentMap = new Map<string, CommentWithAuthor>();
+      const rootComments: CommentWithAuthor[] = [];
+      
+      // First pass: initialize comment map
+      for (const comment of commentsWithAuthor) {
+        commentMap.set(comment.id, comment);
+        
+        if (!comment.parentId) {
+          rootComments.push(comment);
+        }
+      }
+      
+      // Second pass: build hierarchy
+      for (const comment of commentsWithAuthor) {
+        if (comment.parentId) {
+          const parent = commentMap.get(comment.parentId);
+          if (parent && parent.replies) {
+            parent.replies.push(comment);
+          }
+        }
+      }
+      
+      return rootComments;
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      return [];
+    }
+  }
+
+  async deleteComment(id: string): Promise<boolean> {
+    try {
+      // Find the comment to get its postId
+      const comment = await CommentModel.findById(id);
+      if (!comment) return false;
+      
+      // Find all replies (recursively)
+      const allCommentIds = await this.findCommentIdsRecursive(id);
+      
+      // Delete all comments
+      if (allCommentIds.length > 0) {
+        await CommentModel.deleteMany({ _id: { $in: allCommentIds.map(id => new Types.ObjectId(id)) } });
+      }
+      
+      // Update post comment count
+      await PostModel.findByIdAndUpdate(
+        comment.postId,
+        { $inc: { commentCount: -allCommentIds.length } }
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      return false;
+    }
+  }
+  
+  private async findCommentIdsRecursive(parentId: string): Promise<string[]> {
+    const result = [parentId];
+    
+    // Find direct replies
+    const replies = await CommentModel.find({ parentId: new Types.ObjectId(parentId) });
+    
+    // Recursively find replies to replies
+    for (const reply of replies) {
+      if (reply && reply._id) {
+        const childIds = await this.findCommentIdsRecursive(reply._id.toString());
+        result.push(...childIds);
       }
     }
     
-    return this.commentsStore.delete(id);
+    return result;
   }
-  
-  // Like operations
-  async likePost(postId: number, userId: number): Promise<Like | undefined> {
-    // Check if already liked
-    const existingLike = Array.from(this.likesStore.values()).find(
-      like => like.postId === postId && like.userId === userId
-    );
-    
-    if (existingLike) {
-      return existingLike;
+
+  async likePost(postId: string, userId: string): Promise<Like | undefined> {
+    try {
+      // Check if already liked
+      const existing = await this.checkLiked(postId, userId);
+      if (existing) {
+        const doc = await LikeModel.findOne({
+          postId: new Types.ObjectId(postId),
+          userId: new Types.ObjectId(userId)
+        });
+        return doc ? MongoStorage.documentToLike(doc) : undefined;
+      }
+      
+      // Create new like
+      const newLike = new LikeModel({
+        postId: new Types.ObjectId(postId),
+        userId: new Types.ObjectId(userId)
+      });
+      
+      const doc = await newLike.save();
+      
+      // Update post like count
+      await PostModel.findByIdAndUpdate(
+        postId,
+        { $inc: { likeCount: 1 } }
+      );
+      
+      return MongoStorage.documentToLike(doc);
+    } catch (error) {
+      console.error('Error liking post:', error);
+      return undefined;
     }
-    
-    // Create new like
-    const id = this.likeIdCounter++;
-    const like: Like = {
-      id,
-      postId,
-      userId,
-      createdAt: new Date(),
-    };
-    
-    this.likesStore.set(id, like);
-    return like;
   }
 
-  async unlikePost(postId: number, userId: number): Promise<boolean> {
-    const likeToRemove = Array.from(this.likesStore.entries()).find(
-      ([_, like]) => like.postId === postId && like.userId === userId
-    );
-    
-    if (!likeToRemove) return false;
-    
-    return this.likesStore.delete(likeToRemove[0]);
+  async unlikePost(postId: string, userId: string): Promise<boolean> {
+    try {
+      const result = await LikeModel.findOneAndDelete({
+        postId: new Types.ObjectId(postId),
+        userId: new Types.ObjectId(userId)
+      });
+      
+      if (!result) return false;
+      
+      // Update post like count
+      await PostModel.findByIdAndUpdate(
+        postId,
+        { $inc: { likeCount: -1 } }
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Error unliking post:', error);
+      return false;
+    }
   }
 
-  async checkLiked(postId: number, userId: number): Promise<boolean> {
-    return Array.from(this.likesStore.values()).some(
-      like => like.postId === postId && like.userId === userId
-    );
+  async checkLiked(postId: string, userId: string): Promise<boolean> {
+    try {
+      const count = await LikeModel.countDocuments({
+        postId: new Types.ObjectId(postId),
+        userId: new Types.ObjectId(userId)
+      });
+      
+      return count > 0;
+    } catch (error) {
+      console.error('Error checking like status:', error);
+      return false;
+    }
   }
-  
-  // Category operations
+
   async getCategories(): Promise<Category[]> {
-    return Array.from(this.categoriesStore.values()).sort((a, b) => 
-      b.postCount - a.postCount
-    );
+    try {
+      const docs = await CategoryModel.find().sort({ name: 1 });
+      const categories: Category[] = [];
+      
+      for (const doc of docs) {
+        const category = MongoStorage.documentToCategory(doc);
+        if (category) {
+          categories.push(category);
+        }
+      }
+      
+      return categories;
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
-    const id = this.categoryIdCounter++;
-    const newCategory: Category = {
-      ...category,
-      id,
-      postCount: 0,
-    };
-    
-    this.categoriesStore.set(id, newCategory);
-    return newCategory;
+    try {
+      const newCategory = new CategoryModel(category);
+      const doc = await newCategory.save();
+      const convertedCategory = MongoStorage.documentToCategory(doc);
+      if (!convertedCategory) {
+        throw new Error('Failed to create category');
+      }
+      return convertedCategory;
+    } catch (error) {
+      console.error('Error creating category:', error);
+      throw error;
+    }
   }
-  
-  // Helper to seed initial categories
-  private seedCategories() {
-    const categories = [
-      { name: 'JavaScript', slug: 'javascript' },
-      { name: 'Node.js', slug: 'nodejs' },
-      { name: 'MongoDB', slug: 'mongodb' },
-      { name: 'Express', slug: 'express' },
-      { name: 'Security', slug: 'security' },
-      { name: 'Architecture', slug: 'architecture' },
-    ];
-    
-    categories.forEach(category => {
-      this.createCategory(category);
-    });
+
+  private async seedCategories() {
+    try {
+      const count = await CategoryModel.countDocuments();
+      if (count > 0) return;
+      
+      const categories = [
+        { name: 'JavaScript', slug: 'javascript' },
+        { name: 'React', slug: 'react' },
+        { name: 'Node.js', slug: 'nodejs' },
+        { name: 'CSS', slug: 'css' },
+        { name: 'DevOps', slug: 'devops' },
+        { name: 'Python', slug: 'python' },
+        { name: 'Machine Learning', slug: 'machine-learning' },
+        { name: 'Databases', slug: 'databases' }
+      ];
+      
+      for (const category of categories) {
+        await this.createCategory(category);
+      }
+      
+      console.log('✅ Categories seeded successfully');
+    } catch (error) {
+      console.error('Error seeding categories:', error);
+    }
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new MongoStorage();

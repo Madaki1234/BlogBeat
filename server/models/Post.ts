@@ -1,7 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { IUser } from './User';
 
-// Post interface
 export interface IPost extends Document {
   title: string;
   slug: string;
@@ -17,8 +16,7 @@ export interface IPost extends Document {
   updatedAt: Date;
 }
 
-// Post schema
-const PostSchema = new Schema<IPost>({
+const PostSchema: Schema = new Schema({
   title: {
     type: String,
     required: true,
@@ -28,8 +26,7 @@ const PostSchema = new Schema<IPost>({
     type: String,
     required: true,
     unique: true,
-    trim: true,
-    lowercase: true
+    trim: true
   },
   content: {
     type: String,
@@ -49,8 +46,7 @@ const PostSchema = new Schema<IPost>({
     required: true
   },
   coverImage: {
-    type: String,
-    default: ''
+    type: String
   },
   published: {
     type: Boolean,
@@ -74,11 +70,10 @@ const PostSchema = new Schema<IPost>({
   }
 });
 
-// Update the updatedAt field before saving
+// Update the updatedAt timestamp before saving
 PostSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-// Export Post model
 export default mongoose.model<IPost>('Post', PostSchema);

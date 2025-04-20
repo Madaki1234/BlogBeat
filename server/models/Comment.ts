@@ -2,7 +2,6 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { IUser } from './User';
 import { IPost } from './Post';
 
-// Comment interface
 export interface IComment extends Document {
   content: string;
   postId: mongoose.Types.ObjectId | IPost;
@@ -11,8 +10,7 @@ export interface IComment extends Document {
   createdAt: Date;
 }
 
-// Comment schema
-const CommentSchema = new Schema<IComment>({
+const CommentSchema: Schema = new Schema({
   content: {
     type: String,
     required: true
@@ -29,8 +27,7 @@ const CommentSchema = new Schema<IComment>({
   },
   parentId: {
     type: Schema.Types.ObjectId,
-    ref: 'Comment',
-    default: null
+    ref: 'Comment'
   },
   createdAt: {
     type: Date,
@@ -38,5 +35,4 @@ const CommentSchema = new Schema<IComment>({
   }
 });
 
-// Export Comment model
 export default mongoose.model<IComment>('Comment', CommentSchema);

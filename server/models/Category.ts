@@ -1,26 +1,22 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-// Category interface
 export interface ICategory extends Document {
   name: string;
   slug: string;
   createdAt: Date;
 }
 
-// Category schema
-const CategorySchema = new Schema<ICategory>({
+const CategorySchema: Schema = new Schema({
   name: {
     type: String,
     required: true,
-    trim: true,
-    unique: true
+    trim: true
   },
   slug: {
     type: String,
     required: true,
-    trim: true,
-    lowercase: true,
-    unique: true
+    unique: true,
+    trim: true
   },
   createdAt: {
     type: Date,
@@ -28,5 +24,4 @@ const CategorySchema = new Schema<ICategory>({
   }
 });
 
-// Export Category model
 export default mongoose.model<ICategory>('Category', CategorySchema);

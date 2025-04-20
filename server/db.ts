@@ -1,38 +1,44 @@
 import mongoose from 'mongoose';
-import { config } from 'dotenv';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { log } from './vite';
 
-// Load environment variables
-config();
-
-// MongoDB connection string - use the DATABASE_URL from PostgreSQL for now
-// or fallback to localhost for development
-const MONGODB_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/blog';
+let mongoServer: MongoMemoryServer;
 
 // Connect to MongoDB
 export const connectToDatabase = async (): Promise<void> => {
   try {
-    await mongoose.connect(MONGODB_URI);
-    console.log('📦 Connected to MongoDB');
+    // Start in-memory MongoDB server
+    mongoServer = await MongoMemoryServer.create();
+    const mongoUri = mongoServer.getUri();
+    
+    log(`Using MongoDB memory server at ${mongoUri}`);
+    
+    // Connect to in-memory database
+    await mongoose.connect(mongoUri);
+    log('✅ MongoDB connected');
+    
+    // Listen to connection events
+    mongoose.connection.on('error', (err) => {
+      log(`MongoDB connection error: ${err}`, 'error');
+    });
+    
+    mongoose.connection.on('disconnected', () => {
+      log('MongoDB disconnected');
+    });
+    
+    // Clean up connection on process termination
+    process.on('SIGINT', async () => {
+      await mongoose.connection.close();
+      if (mongoServer) {
+        await mongoServer.stop();
+      }
+      log('MongoDB connection closed');
+      process.exit(0);
+    });
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
+    log(`❌ MongoDB connection error: ${error}`, 'error');
+    throw error;
   }
 };
-
-// Connection events
-mongoose.connection.on('error', err => {
-  console.error('MongoDB connection error:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected');
-});
-
-// Close the MongoDB connection when the Node process terminates
-process.on('SIGINT', async () => {
-  await mongoose.connection.close();
-  console.log('MongoDB connection closed due to app termination');
-  process.exit(0);
-});
 
 export default mongoose;
