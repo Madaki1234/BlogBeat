@@ -22,6 +22,8 @@ const dbConfig = {
     // Production specific options
     ...(isProduction && {
       connectTimeoutMS: 30000,
+      keepAlive: true,
+      keepAliveInitialDelay: 300000,
       retryWrites: true,
       // Use any as a workaround for TypeScript constraints
       w: 'majority' as any,
