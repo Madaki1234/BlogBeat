@@ -2,6 +2,10 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { connectToDatabase } from "./db";
+import helmet from "helmet";
+import compression from "compression";
+import cors from "cors";
+import { isProduction } from "./config";
 
 const app = express();
 app.use(express.json());
