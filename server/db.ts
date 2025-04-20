@@ -1,17 +1,14 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { log } from './vite';
-import dotenv from 'dotenv';
-
-// Load environment variables from .env file
-dotenv.config();
+import { dbConfig, isProduction } from './config';
 
 let mongoServer: MongoMemoryServer;
 
 export const connectToDatabase = async (): Promise<void> => {
   try {
     // Use in-memory MongoDB for development/testing
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    if (dbConfig.useInMemory) {
       mongoServer = await MongoMemoryServer.create();
       const mongoUri = mongoServer.getUri();
       
@@ -21,12 +18,12 @@ export const connectToDatabase = async (): Promise<void> => {
     } 
     // Use real MongoDB in production
     else {
-      if (!process.env.MONGODB_URI) {
-        throw new Error('MONGODB_URI environment variable is not defined. Please set it in your .env file');
+      if (!dbConfig.uri) {
+        throw new Error('MongoDB URI is not defined. Please set MONGODB_URI in your .env file');
       }
       
       log(`Connecting to MongoDB production database...`, 'express');
-      await mongoose.connect(process.env.MONGODB_URI);
+      await mongoose.connect(dbConfig.uri);
       log(`Connected to MongoDB production database`, 'express');
     }
     
@@ -47,6 +44,11 @@ export const connectToDatabase = async (): Promise<void> => {
       log(`MongoDB connection error: ${err}`, 'express');
     });
     
+    // Configure mongoose settings for production
+    if (isProduction) {
+      mongoose.set('debug', false);
+    }
+    
   } catch (error) {
     log(`Error connecting to MongoDB: ${error}`, 'express');
     process.exit(1);
@@ -57,7 +59,7 @@ export const disconnectFromDatabase = async (): Promise<void> => {
   try {
     await mongoose.disconnect();
     
-    if (mongoServer && process.env.NODE_ENV !== 'production') {
+    if (mongoServer && !isProduction) {
       await mongoServer.stop();
     }
     
