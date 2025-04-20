@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
+import { RichTextEditor } from "@/components/rich-text-editor";
 
 const createPostSchema = insertPostSchema.extend({
   coverImage: z.string().optional(),
@@ -207,14 +208,14 @@ export default function CreatePost() {
                   <FormItem>
                     <FormLabel>Content</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Write your blog post content here..." 
-                        className="min-h-[300px]"
-                        {...field} 
+                      <RichTextEditor 
+                        content={field.value} 
+                        onChange={field.onChange}
+                        placeholder="Write your blog post content here..."
                       />
                     </FormControl>
                     <FormDescription>
-                      The main content of your blog post. HTML formatting is supported.
+                      The main content of your blog post. Rich formatting is supported.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
