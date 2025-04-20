@@ -1,12 +1,13 @@
-import { storage } from "../storage";
+import User from './User';
+import Post from './Post';
+import Comment from './Comment';
+import Like from './Like';
+import Category from './Category';
 
-// This file would typically contain database model definitions
-// Since we're using in-memory storage, this is just a placeholder
-// In a real MongoDB implementation, this would have Mongoose models
-
-export const models = {
-  // Example of how we would expose models in a real implementation
-  getStorage() {
-    return storage;
-  }
+export {
+  User,
+  Post,
+  Comment,
+  Like,
+  Category
 };
