@@ -164,7 +164,7 @@ export default function BlogPost() {
           
           {/* Post Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <article className="prose lg:prose-lg max-w-none mb-12 lg:col-span-2">
+            <article className="prose lg:prose-lg max-w-none mb-12 lg:col-span-2 rich-text-content">
               <div dangerouslySetInnerHTML={{ __html: post.content }} />
             </article>
             
