@@ -1,9 +1,9 @@
 import { 
-  User as UserModel, 
-  Post as PostModel, 
-  Comment as CommentModel, 
-  Like as LikeModel,
-  Category as CategoryModel
+  UserModel, 
+  PostModel, 
+  CommentModel, 
+  LikeModel,
+  CategoryModel
 } from './models';
 import session from 'express-session';
 import createMemoryStore from "memorystore";
@@ -258,10 +258,15 @@ export class MongoStorage implements IStorage {
       if (!doc) return undefined;
       
       const post = MongoStorage.documentToPost(doc);
+      if (!post) return undefined;
+      
       const author = doc.authorId as any;
+      const userObj = MongoStorage.documentToUser(author);
+      
+      if (!userObj) return undefined;
       
       // Remove password from author
-      const { password, ...authorWithoutPassword } = MongoStorage.documentToUser(author);
+      const { password, ...authorWithoutPassword } = userObj;
       
       return {
         ...post,
@@ -296,18 +301,25 @@ export class MongoStorage implements IStorage {
         .populate('authorId');
       
       // Transform to PostWithAuthor[]
-      const posts: PostWithAuthor[] = docs.map(doc => {
+      const posts: PostWithAuthor[] = [];
+      
+      for (const doc of docs) {
         const post = MongoStorage.documentToPost(doc);
+        if (!post) continue;
+        
         const author = doc.authorId as any;
+        const userObj = MongoStorage.documentToUser(author);
+        
+        if (!userObj) continue;
         
         // Remove password from author
-        const { password, ...authorWithoutPassword } = MongoStorage.documentToUser(author);
+        const { password, ...authorWithoutPassword } = userObj;
         
-        return {
+        posts.push({
           ...post,
           author: authorWithoutPassword
-        };
-      });
+        });
+      }
       
       return { posts, total };
     } catch (error) {
@@ -334,18 +346,27 @@ export class MongoStorage implements IStorage {
         .populate('authorId');
       
       // Transform to PostWithAuthor[]
-      return docs.map(doc => {
+      const posts: PostWithAuthor[] = [];
+      
+      for (const doc of docs) {
         const post = MongoStorage.documentToPost(doc);
+        if (!post) continue;
+        
         const author = doc.authorId as any;
+        const userObj = MongoStorage.documentToUser(author);
+        
+        if (!userObj) continue;
         
         // Remove password from author
-        const { password, ...authorWithoutPassword } = MongoStorage.documentToUser(author);
+        const { password, ...authorWithoutPassword } = userObj;
         
-        return {
+        posts.push({
           ...post,
           author: authorWithoutPassword
-        };
-      });
+        });
+      }
+      
+      return posts;
     } catch (error) {
       console.error('Error fetching posts by author:', error);
       return [];

@@ -26,7 +26,7 @@ const UserSchema: Schema = new Schema({
   },
   bio: {
     type: String,
-    default: ''
+    trim: true
   },
   createdAt: {
     type: Date,

@@ -13,7 +13,8 @@ export interface IComment extends Document {
 const CommentSchema: Schema = new Schema({
   content: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   postId: {
     type: Schema.Types.ObjectId,
