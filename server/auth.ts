@@ -4,12 +4,13 @@ import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
+import { storage, User as StorageUser } from "./storage";
 
+// Define the User type for Express session
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    // Extend the User interface to match our storage User type
+    interface User extends StorageUser {}
   }
 }
 
@@ -28,24 +29,23 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+import { securityConfig, isProduction } from './config';
+
 export function setupAuth(app: Express) {
-  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  if (isProduction && securityConfig.sessionSecret === 'dev-blog-secret-key') {
     console.warn('Warning: SESSION_SECRET is not set in production. Using a default value is insecure.');
   }
   
-  const sessionSecret = process.env.SESSION_SECRET || "dev-blog-secret-key";
-  const isProduction = process.env.NODE_ENV === 'production';
-  
   const sessionSettings: session.SessionOptions = {
-    secret: sessionSecret,
+    secret: securityConfig.sessionSecret,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
       httpOnly: true,
-      secure: isProduction, // Use secure cookies in production
-      sameSite: isProduction ? 'strict' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      secure: securityConfig.cookieSecure,
+      sameSite: securityConfig.cookieSameSite as any,
+      maxAge: securityConfig.cookieMaxAge,
     }
   };
 
@@ -70,7 +70,7 @@ export function setupAuth(app: Express) {
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
       done(null, user);
