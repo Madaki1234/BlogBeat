@@ -654,7 +654,24 @@ export class MongoStorage implements IStorage {
         { name: 'DevOps', slug: 'devops' },
         { name: 'Python', slug: 'python' },
         { name: 'Machine Learning', slug: 'machine-learning' },
-        { name: 'Databases', slug: 'databases' }
+        { name: 'Databases', slug: 'databases' },
+        { name: 'Programming', slug: 'programming' },
+        { name: 'Tech', slug: 'tech' },
+        { name: 'Lifestyle', slug: 'Lifestyle' },
+        { name: 'Health', slug: 'health' },
+        { name: 'Travel', slug: 'travel' },
+        { name: 'Food', slug: 'food' },
+        { name: 'Fashion', slug: 'fashion' },
+        { name: 'Books', slug: 'books' },
+        { name: 'Movies', slug: 'movies' },
+        { name: 'Music', slug: 'music' },
+        { name: 'Sports', slug: 'sports' },
+        { name: 'Gaming', slug: 'gaming' },
+        { name: 'Finance', slug: 'finance' },
+        { name: 'Career', slug: 'career' },
+        { name: 'Education', slug: 'education' },
+        { name: 'Science', slug: 'science' },
+        { name: 'Other', slug: 'other' }
       ];
       
       for (const category of categories) {

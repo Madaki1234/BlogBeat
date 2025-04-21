@@ -11,6 +11,13 @@ dist
 build
 server/public
 
+#repl-history 
+.replit
+.replit-ai-history
+.replit-prompt-history
+
+
+
 # Development
 .DS_Store
 vite.config.ts.*
