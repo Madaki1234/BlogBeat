@@ -9,6 +9,7 @@ import AuthPage from "@/pages/auth-page";
 import BlogPost from "@/pages/blog-post";
 import CreatePost from "@/pages/create-post";
 import { ProtectedRoute } from "./lib/protected-route";
+import Dashboard from "@/pages/dashboard";
 import { AuthProvider } from "./hooks/use-auth";
 import Header from "./components/header";
 import Footer from "./components/footer";
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/post/:slug" component={BlogPost} />
       <ProtectedRoute path="/create" component={CreatePost} />
+      <ProtectedRoute path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
   );
