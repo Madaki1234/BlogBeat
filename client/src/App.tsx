@@ -21,7 +21,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/post/:slug" component={BlogPost} />
       <ProtectedRoute path="/create" component={CreatePost} />
-      <Route path="/dashboard" component={Dashboard} />
+      <ProtectedRoute path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
   );
