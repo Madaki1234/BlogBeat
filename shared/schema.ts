@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -31,7 +31,7 @@ export const comments = pgTable("comments", {
   content: text("content").notNull(),
   postId: integer("post_id").notNull().references(() => posts.id),
   authorId: integer("author_id").notNull().references(() => users.id),
-  parentId: integer("parent_id").references(() => comments.id),
+  parentId: integer("parent_id").references((): AnyPgColumn => comments.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

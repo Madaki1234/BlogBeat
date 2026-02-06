@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { CommentWithAuthor } from "@shared/schema";
+import { ApiCommentWithAuthor } from "@shared/api-types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -28,15 +28,15 @@ const commentSchema = z.object({
 type CommentForm = z.infer<typeof commentSchema>;
 
 interface CommentSectionProps {
-  postId: number;
-  comments: CommentWithAuthor[];
+  postId: string;
+  comments: ApiCommentWithAuthor[];
   isLoading: boolean;
 }
 
 export default function CommentSection({ postId, comments, isLoading }: CommentSectionProps) {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   
   // Form for creating comments
   const form = useForm<CommentForm>({
@@ -72,7 +72,7 @@ export default function CommentSection({ postId, comments, isLoading }: CommentS
   
   // Create reply mutation
   const createReplyMutation = useMutation({
-    mutationFn: async ({ data, parentId }: { data: CommentForm, parentId: number }) => {
+    mutationFn: async ({ data, parentId }: { data: CommentForm, parentId: string }) => {
       const res = await apiRequest("POST", `/api/posts/${postId}/comments`, {
         ...data,
         postId,
@@ -89,7 +89,7 @@ export default function CommentSection({ postId, comments, isLoading }: CommentS
   
   // Delete comment mutation
   const deleteCommentMutation = useMutation({
-    mutationFn: async (commentId: number) => {
+    mutationFn: async (commentId: string) => {
       await apiRequest("DELETE", `/api/comments/${commentId}`);
     },
     onSuccess: () => {
@@ -110,7 +110,7 @@ export default function CommentSection({ postId, comments, isLoading }: CommentS
     createReplyMutation.mutate({ data, parentId: replyingTo });
   };
   
-  const handleDeleteComment = (commentId: number) => {
+  const handleDeleteComment = (commentId: string) => {
     if (confirm("Are you sure you want to delete this comment?")) {
       deleteCommentMutation.mutate(commentId);
     }
@@ -228,7 +228,7 @@ export default function CommentSection({ postId, comments, isLoading }: CommentS
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         {comment.author.name || comment.author.username}
-                        {comment.author.id === user?.id && (
+                        {comment.author.id === String(user?.id) && (
                           <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
                             You
                           </span>
@@ -238,7 +238,7 @@ export default function CommentSection({ postId, comments, isLoading }: CommentS
                         {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                       </div>
                     </div>
-                    {user && (comment.author.id === user.id) && (
+                    {user && (comment.author.id === String(user.id)) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -346,7 +346,7 @@ export default function CommentSection({ postId, comments, isLoading }: CommentS
                               <div>
                                 <div className="font-medium flex items-center gap-2">
                                   {reply.author.name || reply.author.username}
-                                  {reply.author.id === user?.id && (
+                                  {reply.author.id === String(user?.id) && (
                                     <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
                                       You
                                     </span>
@@ -356,7 +356,7 @@ export default function CommentSection({ postId, comments, isLoading }: CommentS
                                   {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}
                                 </div>
                               </div>
-                              {user && (reply.author.id === user.id) && (
+                              {user && (reply.author.id === String(user.id)) && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

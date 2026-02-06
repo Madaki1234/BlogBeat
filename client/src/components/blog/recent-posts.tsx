@@ -3,16 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import BlogCard from "./blog-card";
 import Pagination from "./pagination";
-import { PostWithAuthor, Category } from "@shared/schema";
+import { ApiPostWithAuthor, ApiCategory, ApiPostsResponse } from "@shared/api-types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 
 interface RecentPostsProps {
-  posts: PostWithAuthor[];
+  posts: ApiPostWithAuthor[];
   isLoading: boolean;
-  categories: Category[];
+  categories: ApiCategory[];
   categoriesLoading: boolean;
   pagination: {
     page: number;
@@ -33,7 +33,7 @@ export default function RecentPosts({
   const [searchTerm, setSearchTerm] = useState("");
   
   // Fetch posts when category or page changes
-  const { data, isLoading: postsLoading } = useQuery({
+  const { data, isLoading: postsLoading } = useQuery<ApiPostsResponse>({
     queryKey: ["/api/posts", { page: currentPage, limit: 10, category: selectedCategory }],
     enabled: selectedCategory !== null || currentPage > 1,
     staleTime: 60 * 1000, // 1 minute

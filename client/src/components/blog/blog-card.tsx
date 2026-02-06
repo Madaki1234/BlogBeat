@@ -1,9 +1,9 @@
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { PostWithAuthor } from "@shared/schema";
+import { ApiPostWithAuthor } from "@shared/api-types";
 
 interface BlogCardProps {
-  post: PostWithAuthor;
+  post: ApiPostWithAuthor;
   featured?: boolean;
   horizontal?: boolean;
 }

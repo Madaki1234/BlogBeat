@@ -1,10 +1,10 @@
 import { Link } from "wouter";
 import BlogCard from "./blog-card";
-import { PostWithAuthor } from "@shared/schema";
+import { ApiPostWithAuthor } from "@shared/api-types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface FeaturedPostsProps {
-  posts: PostWithAuthor[];
+  posts: ApiPostWithAuthor[];
   isLoading: boolean;
 }
 

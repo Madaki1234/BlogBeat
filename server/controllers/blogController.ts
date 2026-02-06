@@ -1,6 +1,13 @@
 import { Request, Response } from "express";
 import { storage } from "../storage";
-import { insertPostSchema, insertCommentSchema } from "@shared/schema";
+import { insertPostSchema } from "@shared/schema";
+import { z } from "zod";
+
+const createCommentSchema = z.object({
+  content: z.string().min(1),
+  postId: z.string().min(1),
+  parentId: z.string().min(1).optional().nullable(),
+});
 
 export const blogController = {
   // Posts
@@ -17,11 +24,19 @@ export const blogController = {
         if (req.isAuthenticated()) {
           return {
             ...post,
-            liked: storage.checkLiked(post.id, req.user!.id)
+            liked: false,
           };
         }
         return post;
       });
+
+      if (req.isAuthenticated()) {
+        await Promise.all(
+          postsWithLikedStatus.map(async (post) => {
+            post.liked = await storage.checkLiked(post.id, req.user!.id);
+          }),
+        );
+      }
       
       res.json({ 
         posts: postsWithLikedStatus,
@@ -45,11 +60,19 @@ export const blogController = {
         if (req.isAuthenticated()) {
           return {
             ...post,
-            liked: storage.checkLiked(post.id, req.user!.id)
+            liked: false,
           };
         }
         return post;
       });
+
+      if (req.isAuthenticated()) {
+        await Promise.all(
+          postsWithLikedStatus.map(async (post) => {
+            post.liked = await storage.checkLiked(post.id, req.user!.id);
+          }),
+        );
+      }
       
       res.json(postsWithLikedStatus);
     } catch (error) {
@@ -93,6 +116,8 @@ export const blogController = {
       
       const post = await storage.createPost({
         ...validation.data,
+        coverImage: validation.data.coverImage ?? undefined,
+        published: validation.data.published ?? true,
         authorId: req.user!.id
       });
       
@@ -109,7 +134,7 @@ export const blogController = {
         return res.status(401).json({ message: 'Authentication required' });
       }
       
-      const postId = parseInt(req.params.id);
+      const postId = req.params.id;
       const post = await storage.getPostById(postId);
       
       if (!post) {
@@ -125,7 +150,10 @@ export const blogController = {
         return res.status(400).json({ errors: validation.error.errors });
       }
       
-      const updatedPost = await storage.updatePost(postId, validation.data);
+      const updatedPost = await storage.updatePost(postId, {
+        ...validation.data,
+        coverImage: validation.data.coverImage ?? undefined,
+      });
       res.json(updatedPost);
     } catch (error) {
       console.error('Error updating post:', error);
@@ -139,7 +167,7 @@ export const blogController = {
         return res.status(401).json({ message: 'Authentication required' });
       }
       
-      const postId = parseInt(req.params.id);
+      const postId = req.params.id;
       const post = await storage.getPostById(postId);
       
       if (!post) {
@@ -166,7 +194,7 @@ export const blogController = {
   // Comments
   async getComments(req: Request, res: Response) {
     try {
-      const postId = parseInt(req.params.postId);
+      const postId = req.params.postId;
       const comments = await storage.getCommentsByPostId(postId);
       res.json(comments);
     } catch (error) {
@@ -181,14 +209,14 @@ export const blogController = {
         return res.status(401).json({ message: 'Authentication required' });
       }
       
-      const postId = parseInt(req.params.postId);
+      const postId = req.params.postId;
       const post = await storage.getPostById(postId);
       
       if (!post) {
         return res.status(404).json({ message: 'Post not found' });
       }
       
-      const validation = insertCommentSchema.safeParse({
+      const validation = createCommentSchema.safeParse({
         ...req.body,
         postId,
       });
@@ -199,6 +227,7 @@ export const blogController = {
       
       const comment = await storage.createComment({
         ...validation.data,
+        parentId: validation.data.parentId ?? undefined,
         authorId: req.user!.id,
       });
       
@@ -226,11 +255,8 @@ export const blogController = {
         return res.status(401).json({ message: 'Authentication required' });
       }
       
-      const commentId = parseInt(req.params.id);
-      
-      // Find the comment first to check ownership
-      const comments = Array.from(storage.commentsStore?.values() || []);
-      const comment = comments.find(c => c.id === commentId);
+      const commentId = req.params.id;
+      const comment = await storage.getCommentById(commentId);
       
       if (!comment) {
         return res.status(404).json({ message: 'Comment not found' });
@@ -260,7 +286,7 @@ export const blogController = {
         return res.status(401).json({ message: 'Authentication required' });
       }
       
-      const postId = parseInt(req.params.postId);
+      const postId = req.params.postId;
       const post = await storage.getPostById(postId);
       
       if (!post) {
@@ -274,9 +300,7 @@ export const blogController = {
       }
       
       // Get updated like count
-      const likeCount = Array.from(storage.likesStore?.values() || []).filter(
-        l => l.postId === postId
-      ).length;
+      const likeCount = await storage.getLikeCountByPostId(postId);
       
       res.status(201).json({ likeCount, liked: true });
     } catch (error) {
@@ -291,7 +315,7 @@ export const blogController = {
         return res.status(401).json({ message: 'Authentication required' });
       }
       
-      const postId = parseInt(req.params.postId);
+      const postId = req.params.postId;
       const success = await storage.unlikePost(postId, req.user!.id);
       
       if (!success) {
@@ -299,9 +323,7 @@ export const blogController = {
       }
       
       // Get updated like count
-      const likeCount = Array.from(storage.likesStore?.values() || []).filter(
-        like => like.postId === postId
-      ).length;
+      const likeCount = await storage.getLikeCountByPostId(postId);
       
       res.json({ likeCount, liked: false });
     } catch (error) {

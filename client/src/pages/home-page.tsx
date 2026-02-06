@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import FeaturedPosts from "@/components/blog/featured-posts";
 import RecentPosts from "@/components/blog/recent-posts";
 import { Helmet } from "react-helmet";
+import { ApiCategory, ApiPostWithAuthor, ApiPostsResponse } from "@shared/api-types";
 
 export default function HomePage() {
-  const { data: featuredPosts = [], isLoading: featuredLoading } = useQuery({
+  const { data: featuredPosts = [], isLoading: featuredLoading } = useQuery<ApiPostWithAuthor[]>({
     queryKey: ["/api/posts/featured"],
     staleTime: 60 * 1000, // 1 minute
   });
@@ -12,12 +13,12 @@ export default function HomePage() {
   const { 
     data: postsData = { posts: [], total: 0, page: 1, limit: 10, totalPages: 0 },
     isLoading: postsLoading
-  } = useQuery({
+  } = useQuery<ApiPostsResponse>({
     queryKey: ["/api/posts", { page: 1, limit: 10 }],
     staleTime: 60 * 1000, // 1 minute
   });
 
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<ApiCategory[]>({
     queryKey: ["/api/categories"],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

@@ -1,18 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ApiCategory, ApiPostsResponse } from "@shared/api-types";
 
 export default function PostSidebar() {
-  const { data: relatedPosts = [], isLoading: relatedLoading } = useQuery({
+  const { data: relatedPostsData, isLoading: relatedLoading } = useQuery<ApiPostsResponse>({
     queryKey: ["/api/posts", { limit: 2 }],
     staleTime: 60 * 1000, // 1 minute
   });
   
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<ApiCategory[]>({
     queryKey: ["/api/categories"],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
+  const relatedPosts = relatedPostsData?.posts ?? [];
+
   return (
     <div className="space-y-8">
       {/* Tags/Categories */}
