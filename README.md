@@ -59,11 +59,36 @@ A full-stack blog application with Node.js MVC backend, MongoDB, and React front
    ```bash
    # Using the script
    ./start-production.sh
-   
+
    # Or manually
    npm run build
    NODE_ENV=production node dist/index.js
    ```
+
+## Host this Project on GitHub
+
+1. Create an empty GitHub repository (without adding a README or license).
+2. Set your repository as the remote origin:
+   ```bash
+   git remote add origin https://github.com/<your-username>/<your-repo>.git
+   ```
+3. Push the current branch:
+   ```bash
+   git push -u origin work
+   ```
+4. (Optional) Rename your primary branch to `main`:
+   ```bash
+   git branch -M main
+   git push -u origin main
+   ```
+5. Open a pull request from your feature branch into `main`.
+
+### GitHub Actions CI
+
+This repository includes `.github/workflows/ci.yml` that runs on pushes and pull requests to validate:
+
+- TypeScript checks (`npm run check`)
+- Production build (`npm run build`)
 
 ## Project Structure
 
