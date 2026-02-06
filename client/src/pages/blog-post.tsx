@@ -8,23 +8,24 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Helmet } from "react-helmet";
+import { ApiCommentWithAuthor, ApiPostWithAuthor } from "@shared/api-types";
 
 export default function BlogPost() {
   const [match, params] = useRoute("/post/:slug");
   const [, navigate] = useLocation();
   const { user } = useAuth();
   
-  const { data: post, isLoading, error } = useQuery({
+  const { data: post, isLoading, error } = useQuery<ApiPostWithAuthor>({
     queryKey: [`/api/posts/${params?.slug}`],
     enabled: !!params?.slug,
   });
   
-  const { data: comments = [], isLoading: commentsLoading } = useQuery({
+  const { data: comments = [], isLoading: commentsLoading } = useQuery<ApiCommentWithAuthor[]>({
     queryKey: [`/api/posts/${post?.id}/comments`],
     enabled: !!post?.id,
   });
   
-  const likeMutation = useMutation({
+  const likeMutation = useMutation<{ likeCount: number; liked: boolean }, Error>({
     mutationFn: async () => {
       if (!post) return;
       if (post.liked) {

@@ -95,12 +95,14 @@ export interface IStorage {
   // Comment operations
   createComment(comment: InsertComment & { authorId: string }): Promise<Comment>;
   getCommentsByPostId(postId: string): Promise<CommentWithAuthor[]>;
+  getCommentById(id: string): Promise<Comment | undefined>;
   deleteComment(id: string): Promise<boolean>;
   
   // Like operations
   likePost(postId: string, userId: string): Promise<Like | undefined>;
   unlikePost(postId: string, userId: string): Promise<boolean>;
   checkLiked(postId: string, userId: string): Promise<boolean>;
+  getLikeCountByPostId(postId: string): Promise<number>;
   
   // Category operations
   getCategories(): Promise<Category[]>;
@@ -494,6 +496,16 @@ export class MongoStorage implements IStorage {
     }
   }
 
+  async getCommentById(id: string): Promise<Comment | undefined> {
+    try {
+      const doc = await CommentModel.findById(id);
+      return doc ? MongoStorage.documentToComment(doc) : undefined;
+    } catch (error) {
+      console.error('Error fetching comment by id:', error);
+      return undefined;
+    }
+  }
+
   async deleteComment(id: string): Promise<boolean> {
     try {
       // Find the comment to get its postId
@@ -604,6 +616,15 @@ export class MongoStorage implements IStorage {
     } catch (error) {
       console.error('Error checking like status:', error);
       return false;
+    }
+  }
+
+  async getLikeCountByPostId(postId: string): Promise<number> {
+    try {
+      return await LikeModel.countDocuments({ postId: new Types.ObjectId(postId) });
+    } catch (error) {
+      console.error('Error fetching like count:', error);
+      return 0;
     }
   }
 
